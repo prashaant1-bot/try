@@ -17,6 +17,8 @@ void main() async {
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     FirebaseAuth.instance.authStateChanges().listen((User? user) {
@@ -57,6 +59,8 @@ class MyApp extends StatelessWidget {
 /////////////////////////////////////////////////////////////////////////////
 
 class LoginScreen extends StatelessWidget {
+  const LoginScreen({super.key});
+
   Future<User?> signInWithGoogle() async {
     print("🔥 Google Sign-In function started");
 
@@ -134,6 +138,8 @@ class LoginScreen extends StatelessWidget {
 ////////////////////////////////////////////////////////////
 
 class HomeScreen extends StatelessWidget {
+  const HomeScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -247,6 +253,8 @@ class HomeScreen extends StatelessWidget {
 //////////////dashboard screen//////////////////////////
 
 class DashboardScreen extends StatefulWidget {
+  const DashboardScreen({super.key});
+
   @override
   _DashboardScreenState createState() => _DashboardScreenState();
 }
@@ -461,6 +469,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
 ////////////////////////////////////////////////////////////
 
 class EssayHistoryScreen extends StatelessWidget {
+  const EssayHistoryScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     final uid = FirebaseAuth.instance.currentUser!.uid;
@@ -558,7 +568,7 @@ class EssayHistoryScreen extends StatelessWidget {
 class UserEssayDetailScreen extends StatelessWidget {
   final data;
 
-  UserEssayDetailScreen({required this.data});
+  const UserEssayDetailScreen({super.key, required this.data});
 
   @override
   Widget build(BuildContext context) {
@@ -669,6 +679,8 @@ class UserEssayDetailScreen extends StatelessWidget {
 ////////////////////////////////////////////////////////////
 
 class DateScreen extends StatelessWidget {
+  const DateScreen({super.key});
+
   List<String> generateDates() {
     List<String> dates = [];
 
@@ -827,7 +839,7 @@ class DateScreen extends StatelessWidget {
 class EssayDetailScreen extends StatelessWidget {
   final String date;
 
-  EssayDetailScreen({required this.date});
+  const EssayDetailScreen({super.key, required this.date});
 
   @override
   Widget build(BuildContext context) {
@@ -1143,7 +1155,7 @@ class EssayDetailScreen extends StatelessWidget {
 class FullEssayScreen extends StatelessWidget {
   final data;
 
-  FullEssayScreen({required this.data});
+  const FullEssayScreen({super.key, required this.data});
 
   @override
   Widget build(BuildContext context) {
@@ -1191,7 +1203,7 @@ class FullEssayScreen extends StatelessWidget {
 class EssayScreen extends StatefulWidget {
   final String date;
 
-  EssayScreen({required this.date});
+  const EssayScreen({super.key, required this.date});
 
   @override
   _EssayScreenState createState() => _EssayScreenState();
@@ -1208,7 +1220,7 @@ class _EssayScreenState extends State<EssayScreen> {
   Future pickImages() async {
     final pickedFiles = await picker.pickMultiImage();
 
-    if (pickedFiles != null && pickedFiles.isNotEmpty) {
+    if (pickedFiles.isNotEmpty) {
       setState(() {
         _images = pickedFiles.map((e) => File(e.path)).toList();
         feedback = "";
@@ -1289,7 +1301,8 @@ ${doc['feedback']}
       final dimensions = dimensionsList.join(", ");
       final currentAffairs = currentAffairsList.join(", ");
 
-      final apiKey = "paste key";
+      final apiKey =
+          "api key here";
       print("📡 STEP 1: Sending request to OpenAI...");
       final response = await http.post(
         Uri.parse("https://api.openai.com/v1/chat/completions"),
@@ -1555,7 +1568,7 @@ ${doc['feedback']}
           if (fullResponse.contains("STRUCTURE")) {
             final parts = fullResponse.split("STRUCTURE");
             essay = parts[0].replaceFirst("ESSAY:", "").trim();
-            feedbackText = "STRUCTURE" + parts[1];
+            feedbackText = "STRUCTURE${parts[1]}";
           } else {
             feedbackText = fullResponse;
           }
