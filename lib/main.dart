@@ -1301,8 +1301,7 @@ ${doc['feedback']}
       final dimensions = dimensionsList.join(", ");
       final currentAffairs = currentAffairsList.join(", ");
 
-      final apiKey =
-          "api key here";
+      final apiKey = "API_KEY_HERE";
       print("📡 STEP 1: Sending request to OpenAI...");
       final response = await http.post(
         Uri.parse("https://api.openai.com/v1/chat/completions"),
