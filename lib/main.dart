@@ -9,6 +9,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -1199,8 +1200,10 @@ class EssayScreen extends StatefulWidget {
 
 class _EssayScreenState extends State<EssayScreen> {
   List<File> _images = [];
+
   String feedback = "";
   String essayText = "";
+
   bool loading = false;
 
   final picker = ImagePicker();
@@ -1211,20 +1214,20 @@ class _EssayScreenState extends State<EssayScreen> {
     if (pickedFiles != null && pickedFiles.isNotEmpty) {
       setState(() {
         _images = pickedFiles.map((e) => File(e.path)).toList();
-        feedback = "";
-      });
 
-      await sendToGPT(_images);
+        feedback = "";
+        essayText = "";
+      });
     }
   }
 
-  int extractScore(String text) {
-    final regex = RegExp(r'(\d+)/20');
+  double extractScore(String text) {
+    final regex = RegExp(r'(\d+(\.\d+)?)/20');
 
     final match = regex.firstMatch(text);
 
     if (match != null) {
-      return int.parse(match.group(1)!);
+      return double.tryParse(match.group(1) ?? "0") ?? 0;
     }
 
     return 0;
@@ -1289,356 +1292,350 @@ ${doc['feedback']}
       final dimensions = dimensionsList.join(", ");
       final currentAffairs = currentAffairsList.join(", ");
 
-      final apiKey = "paste key";
-      print("📡 STEP 1: Sending request to OpenAI...");
-      final response = await http.post(
-        Uri.parse("https://api.openai.com/v1/chat/completions"),
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer $apiKey",
-        },
-        body: jsonEncode({
-          "model": "gpt-4o",
-          "messages": [
-            {
-              "role": "system",
-              "content":
-                  """
-            You are a strict and experienced UPSC CAPF paper 2 evaluator who has checked 1000+ copies.
+      print("📡 STEP 1: Calling Firebase Function...");
 
-            You follow my personal evaluation style.
-
-            From the examples below, learn:
-            - Tone: constructive, honest, mentor-like (not robotic)
-            - Depth: specific, not generic
-            - Approach: always justify marks and give actionable feedback
-
-            Do NOT copy phrases from examples.
-            Do NOT repeat patterns blindly.
-            Apply the same thinking style to a NEW essay.
-
-            ------------------------
-            TRAINING EXAMPLES:
-            $trainingData
-            ------------------------
-
-            CURRENT ESSAY TOPIC:
-            $topic
-
-            TOPIC CONTEXT:
-            $contextInfo
-
-            EXPECTED DIMENSIONS:
-            $dimensions
-
-            CURRENT AFFAIRS CONNECTIONS:
-            $currentAffairs
-
-            TASK:
-
-            These are multiple pages of a single UPSC essay.
-            The images are in order. Combine them into one continuous essay.
-            Ignore page breaks.
-
-            First extract and write:
-
-            ESSAY:
-            <clean essay text>
-
-            ------------------------
-
-            EVALUATION LOGIC:
-
-            Step 1: Evaluate the essay quality internally:
-            - STRONG
-            - AVERAGE
-            - WEAK
-
-            Step 2:
-            - HIGH → mostly strengths, minimal suggestions
-            - AVERAGE → balanced feedback
-            - WEAK → detailed improvements
-
-            Step 3:
-            Before suggesting anything, check:
-            “Is this missing?”
-
-            If NOT missing → DO NOT suggest.
-
-            ------------------------
-            TOPIC RELEVANCE RULES:
-
-            - Evaluate whether the essay actually addresses the core demand of the topic.
-            - Check whether the candidate understands the contemporary relevance of the topic.
-            - Reward essays that connect with current affairs naturally.
-            - Reward multidimensional analysis.
-            - Penalize essays that become generic and could fit any topic.
-            - Penalize repetition and vague philosophical writing disconnected from topic demand.
-            - Check whether important dimensions are missing.
-            - Do not expect every dimension, but major missing dimensions should affect marks.
-
-                 A strong CAPF essay usually contains:
-                 - social awareness
-                 - administrative understanding
-                 - contemporary relevance
-                 - examples/current affairs
-                 - clear structure
-                 - practical solutions
-                 - mature conclusion
-
-                 Weak essays are:
-                 - generic
-                 - repetitive
-                 - emotionally shallow 
-                 - lacking examples
-                 - disconnected from current realities
-                 - overly philosophical without substance
-
-            ------------------------
-
-            MARKING SCHEME:
-
-            STRUCTURE (0–8)
-            QUALITY OF CONTENT (0–8)
-            LANGUAGE (0–4)
-
-            TOTAL = 20
-
-            ------------------------
-
-            SCORING CALIBRATION:
-
-            06–09 = weak essay
-            10–13 = average essay
-            14–16 = strong essay
-            17–20 = exceptional essay rarely achieved
-
-            Do not inflate marks.
-            Be realistic and strict like actual CAPF evaluation.
-
-            ----------------------------
-
-
-            FORMAT:
-
-            STRUCTURE (x/8):
-            ...
-
-            ---
-
-            QUALITY OF CONTENT (x/8):
-            ...
-
-            ---
-
-            LANGUAGE (x/4):
-            ...
-
-            ---
-
-            STRENGTHS:
-            ...
-
-            ---
-
-            MISTAKES:
-            ...
-
-            ---
-
-            HOW TO IMPROVE:
-            ...
-
-            ---
-
-            FINAL SCORE: __/20
-
-            ------------------------
-
-            RULES:
-
-            - Do NOT suggest things already present in the essay.
-            - Before giving any criticism, first verify whether that weakness genuinely exists.
-            - Avoid generic feedback and vague observations.
-            - Every criticism must directly connect to the actual essay.
-
-            - Do not invent weaknesses simply to make the feedback look detailed.
-            - Be specific, evidence-based, and evaluator-like.
-
-            - If the candidate introduces relevant, meaningful, and non-generic dimensions beyond the provided topic guidance, reward originality.
-            - Do not rigidly expect exact dimensions listed in topic guidance.
-            - Do not penalize creative or unconventional approaches if they remain connected to the topic.
-
-            - Strong essays should receive mostly strengths with limited corrections.
-            - Weak essays should receive detailed, practical, and actionable improvement suggestions.
-
-            - Maintain a constructive, mentor-like, and realistic evaluation tone.
-            - Be honest, balanced, and strict like an actual CAPF evaluator.
-        
-            ------------------------
-
-            FINAL OUTPUT RULE (VERY IMPORTANT):
-
-            You must return your response ONLY in valid JSON format.
-
-            Do NOT write anything before or after JSON.
-
-            Format strictly like this:
-
-            {
-              "essay": "<clean extracted essay text>",
-              "feedback": "<full evaluation exactly as per format above>",
-              "score": <final score number only>
-            }
-
-            Rules:
-            - "score" must be a number (not string)
-            - Do NOT write "/20" inside score
-            - Do NOT add extra text outside JSON
-            - Ensure valid JSON (no trailing commas, proper quotes)
-            
-
-            If you fail to follow JSON format, the response is invalid.
-            """,
-            },
-            {
-              "role": "user",
-              "content": [
-                {
-                  "type": "text",
-                  "text":
-                      "These are multiple pages of one essay. Read them in order and evaluate as a single essay. Evaluate this UPSC capf essay strictly as per instructions",
-                },
-                ...imageMessages,
-              ],
-            },
-          ],
-          "max_tokens": 1500,
-        }),
+      final callable = FirebaseFunctions.instance.httpsCallable(
+        'evaluateEssay',
       );
-      print("✅ STEP 2: API response received");
-      print("STATUS: ${response.statusCode}");
-      print("BODY: ${response.body.substring(0, 200)}");
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        print("🧠 STEP 3: JSON parsed");
+      final result = await callable.call({
+        "messages": [
+          {
+            "role": "system",
+            "content":
+                """
+You are a strict and experienced UPSC CAPF paper 2 evaluator who has checked 1000+ copies.
 
-        print("📝 STEP 4: Full response extracted");
-        String fullResponse = data["choices"]?[0]?["message"]?["content"] ?? "";
+You follow my personal evaluation style.
 
-        // Clean JSON wrappers if present
+From the examples below, learn:
+- Tone: constructive, honest, mentor-like (not robotic)
+- Depth: specific, not generic
+- Approach: always justify marks and give actionable feedback
+
+Do NOT copy phrases from examples.
+Do NOT repeat patterns blindly.
+Apply the same thinking style to a NEW essay.
+
+------------------------
+TRAINING EXAMPLES:
+$trainingData
+------------------------
+
+CURRENT ESSAY TOPIC:
+$topic
+
+TOPIC CONTEXT:
+$contextInfo
+
+EXPECTED DIMENSIONS:
+$dimensions
+
+CURRENT AFFAIRS CONNECTIONS:
+$currentAffairs
+
+TASK:
+
+These are multiple pages of a single UPSC essay.
+The images are in order. Combine them into one continuous essay.
+Ignore page breaks.
+
+First extract and write:
+
+ESSAY:
+<clean essay text>
+
+------------------------
+
+EVALUATION LOGIC:
+
+Step 1: Evaluate the essay quality internally:
+- STRONG
+- AVERAGE
+- WEAK
+
+Step 2:
+- HIGH → mostly strengths, minimal suggestions
+- AVERAGE → balanced feedback
+- WEAK → detailed improvements
+
+Step 3:
+Before suggesting anything, check:
+“Is this missing?”
+
+If NOT missing → DO NOT suggest.
+
+------------------------
+TOPIC RELEVANCE RULES:
+
+- Evaluate whether the essay actually addresses the core demand of the topic.
+- Check whether the candidate understands the contemporary relevance of the topic.
+- Reward essays that connect with current affairs naturally.
+- Reward multidimensional analysis.
+- Penalize essays that become generic and could fit any topic.
+- Penalize repetition and vague philosophical writing disconnected from topic demand.
+- Check whether important dimensions are missing.
+- Do not expect every dimension, but major missing dimensions should affect marks.
+
+A strong CAPF essay usually contains:
+- social awareness
+- administrative understanding
+- contemporary relevance
+- examples/current affairs
+- clear structure
+- practical solutions
+- mature conclusion
+
+Weak essays are:
+- generic
+- repetitive
+- emotionally shallow
+- lacking examples
+- disconnected from current realities
+- overly philosophical without substance
+
+------------------------
+
+MARKING SCHEME:
+
+STRUCTURE (0–8)
+QUALITY OF CONTENT (0–8)
+LANGUAGE (0–4)
+
+TOTAL = 20
+
+------------------------
+
+SCORING CALIBRATION:
+
+06–09 = weak essay
+10–13 = average essay
+14–16 = strong essay
+17–20 = exceptional essay rarely achieved
+
+Do not inflate marks.
+Be realistic and strict like actual CAPF evaluation.
+
+----------------------------
+
+FORMAT:
+
+STRUCTURE (x/8):
+...
+
+---
+
+QUALITY OF CONTENT (x/8):
+...
+
+---
+
+LANGUAGE (x/4):
+...
+
+---
+
+STRENGTHS:
+...
+
+---
+
+MISTAKES:
+...
+
+---
+
+HOW TO IMPROVE:
+...
+
+---
+
+FINAL SCORE: __/20
+
+------------------------
+
+RULES:
+
+- Do NOT suggest things already present in the essay.
+- Before giving any criticism, first verify whether that weakness genuinely exists.
+- Avoid generic feedback and vague observations.
+- Every criticism must directly connect to the actual essay.
+
+- Do not invent weaknesses simply to make the feedback look detailed.
+- Be specific, evidence-based, and evaluator-like.
+
+- If the candidate introduces relevant, meaningful, and non-generic dimensions beyond the provided topic guidance, reward originality.
+- Do not rigidly expect exact dimensions listed in topic guidance.
+- Do not penalize creative or unconventional approaches if they remain connected to the topic.
+
+- Strong essays should receive mostly strengths with limited corrections.
+- Weak essays should receive detailed, practical, and actionable improvement suggestions.
+
+- Maintain a constructive, mentor-like, and realistic evaluation tone.
+- Be honest, balanced, and strict like an actual CAPF evaluator.
+
+------------------------
+
+FINAL OUTPUT RULE (VERY IMPORTANT):
+
+You must return your response ONLY in valid JSON format.
+
+Do NOT write anything before or after JSON.
+
+Format strictly like this:
+
+{
+  "essay": "<clean extracted essay text>",
+  "feedback": "<full evaluation exactly as per format above>",
+  "score": <final score number only>
+}
+
+Rules:
+- "score" can be decimal like 16.5
+- Do NOT write "/20" inside score
+- Do NOT add extra text outside JSON
+- Ensure valid JSON (no trailing commas, proper quotes)
+
+If you fail to follow JSON format, the response is invalid.
+""",
+          },
+          {
+            "role": "user",
+            "content": [
+              {
+                "type": "text",
+                "text":
+                    "These are multiple pages of one essay. Read them in order and evaluate as a single essay. Evaluate this UPSC capf essay strictly as per instructions",
+              },
+              ...imageMessages,
+            ],
+          },
+        ],
+      });
+
+      print("✅ STEP 2: Function response received");
+
+      String fullResponse = result.data['result'] ?? "";
+
+      print("📝 FULL RESPONSE:");
+      print(fullResponse);
+
+      String essay = "";
+      String feedbackText = "";
+      double score = 0;
+
+      try {
         fullResponse = fullResponse
             .replaceAll("```json", "")
             .replaceAll("```", "")
             .trim();
 
-        String essay = "";
-        String feedbackText = "";
-        int score = 0;
+        final start = fullResponse.indexOf("{");
+        final end = fullResponse.lastIndexOf("}");
 
-        try {
-          final parsed = jsonDecode(fullResponse);
-
-          essay = parsed['essay'] ?? "";
-          feedbackText = parsed['feedback'] ?? "";
-
-          score = (parsed['score'] is int)
-              ? parsed['score']
-              : int.tryParse(parsed['score'].toString()) ?? 0;
-
-          print("✅ JSON PARSED");
-        } catch (e) {
-          print("❌ JSON FAILED: $e");
-
-          // fallback (your original logic)
-          if (fullResponse.contains("STRUCTURE")) {
-            final parts = fullResponse.split("STRUCTURE");
-            essay = parts[0].replaceFirst("ESSAY:", "").trim();
-            feedbackText = "STRUCTURE" + parts[1];
-          } else {
-            feedbackText = fullResponse;
-          }
-
-          score = extractScore(fullResponse);
-        }
-        print("🖥️ STEP 6: Updating UI");
-        setState(() {
-          feedback = feedbackText;
-          essayText = essay; // ✅ add this line
-          loading = false;
-        });
-
-        // 🔥 USER FETCH
-        print("🔥 STEP 7: Starting Firestore operations");
-        final user = FirebaseAuth.instance.currentUser;
-        final uid = user!.uid;
-
-        // 📅 Create dayId (one essay per day)
-        final now = DateTime.now();
-        final dayId = "${now.year}-${now.month}-${now.day}";
-
-        // 📄 Global submission reference (for leaderboard etc.)
-        final submissionRef = FirebaseFirestore.instance
-            .collection('essays')
-            .doc(widget.date)
-            .collection('submissions')
-            .doc(uid);
-
-        // 📄 User daily essay reference
-        final userEssayRef = FirebaseFirestore.instance
-            .collection('users')
-            .doc(uid)
-            .collection('essays')
-            .doc(dayId);
-
-        // 🔍 Get previous score (IMPORTANT: before writing)
-        final userDoc = await userEssayRef.get();
-
-        int previousScore = 0;
-        if (userDoc.exists) {
-          previousScore = userDoc.data()?['score'] ?? 0;
+        if (start != -1 && end != -1) {
+          fullResponse = fullResponse.substring(start, end + 1);
         }
 
-        // 💾 Save global submission (overwrite for same day/topic)
-        await submissionRef.set({
-          'essay': essay,
-          'feedback': feedbackText,
-          'score': score,
-          'name': user.displayName ?? "Anonymous",
-          'uid': uid,
-          'timestamp': FieldValue.serverTimestamp(),
-        });
+        final parsed = jsonDecode(fullResponse);
 
-        // 💾 Save / overwrite daily essay (ONE PER DAY)
-        await userEssayRef.set({
-          'score': score,
-          'essay': essay,
-          'feedback': feedbackText,
+        essay = parsed['essay']?.toString() ?? "";
 
-          // 👇 topic metadata used during evaluation
-          'topic': topic,
-          'context': contextInfo,
-          'dimensions': dimensionsList,
-          'currentAffairs': currentAffairsList,
+        feedbackText = parsed['feedback']?.toString() ?? "";
 
-          // 👇 useful for debugging
-          'rawModelResponse': fullResponse,
+        score = (parsed['score'] is num)
+            ? (parsed['score'] as num).toDouble()
+            : double.tryParse(parsed['score'].toString()) ?? 0;
 
-          'timestamp': FieldValue.serverTimestamp(),
-        });
+        if (essay.trim().isEmpty) {
+          essay = "Essay extraction failed.";
+        }
 
-        // 📊 Update total score correctly
-        await FirebaseFirestore.instance.collection('users').doc(uid).set({
-          'totalScore': FieldValue.increment(score - previousScore),
-        }, SetOptions(merge: true));
-        print("✅ STEP 8: Firestore completed");
-      } else {
-        setState(() {
-          feedback = "API Error";
-          loading = false;
-        });
+        if (feedbackText.trim().isEmpty) {
+          feedbackText = "Feedback generation failed.";
+        }
+
+        print("✅ JSON PARSED SUCCESSFULLY");
+      } catch (e) {
+        print("❌ JSON FAILED: $e");
+
+        if (fullResponse.contains("STRUCTURE")) {
+          final parts = fullResponse.split("STRUCTURE");
+
+          essay = parts[0].replaceFirst("ESSAY:", "").trim();
+
+          feedbackText = "STRUCTURE${parts[1]}";
+        } else {
+          feedbackText = fullResponse;
+        }
+
+        score = extractScore(fullResponse);
+
+        if (feedbackText.trim().isEmpty) {
+          feedbackText = "Could not generate feedback.";
+        }
       }
+
+      setState(() {
+        feedback = feedbackText;
+        essayText = essay;
+        loading = false;
+      });
+
+      final user = FirebaseAuth.instance.currentUser;
+
+      final uid = user!.uid;
+
+      final now = DateTime.now();
+
+      final dayId = "${now.year}-${now.month}-${now.day}";
+
+      final submissionRef = FirebaseFirestore.instance
+          .collection('essays')
+          .doc(widget.date)
+          .collection('submissions')
+          .doc(uid);
+
+      final userEssayRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('essays')
+          .doc(dayId);
+
+      final userDoc = await userEssayRef.get();
+
+      double previousScore = 0;
+
+      if (userDoc.exists) {
+        previousScore = (userDoc.data()?['score'] ?? 0).toDouble();
+      }
+
+      await submissionRef.set({
+        'essay': essay,
+        'feedback': feedbackText,
+        'score': score,
+        'name': user.displayName ?? "Anonymous",
+        'uid': uid,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+
+      await userEssayRef.set({
+        'score': score,
+        'essay': essay,
+        'feedback': feedbackText,
+        'topic': topic,
+        'context': contextInfo,
+        'dimensions': dimensionsList,
+        'currentAffairs': currentAffairsList,
+        'rawModelResponse': fullResponse,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+
+      await FirebaseFirestore.instance.collection('users').doc(uid).set({
+        'totalScore': FieldValue.increment(score - previousScore),
+      }, SetOptions(merge: true));
+
+      print("✅ STEP 8: Firestore completed");
     } catch (e) {
       print("❌ ERROR OCCURRED: $e");
 
@@ -1662,7 +1659,9 @@ ${doc['feedback']}
                 onPressed: pickImages,
                 child: Text("Upload Image"),
               ),
+
               SizedBox(height: 20),
+
               _images.isNotEmpty
                   ? SizedBox(
                       height: 200,
@@ -1684,7 +1683,6 @@ ${doc['feedback']}
                                   ),
                                 ),
 
-                                // 🔢 Page number
                                 Positioned(
                                   top: 5,
                                   left: 5,
@@ -1707,7 +1705,6 @@ ${doc['feedback']}
                                   ),
                                 ),
 
-                                // 🔄 REORDER BUTTONS (ADD THIS)
                                 Positioned(
                                   bottom: 5,
                                   left: 5,
@@ -1728,8 +1725,10 @@ ${doc['feedback']}
                                               ? () {
                                                   setState(() {
                                                     final temp = _images[index];
+
                                                     _images[index] =
                                                         _images[index - 1];
+
                                                     _images[index - 1] = temp;
                                                   });
                                                 }
@@ -1745,8 +1744,10 @@ ${doc['feedback']}
                                               ? () {
                                                   setState(() {
                                                     final temp = _images[index];
+
                                                     _images[index] =
                                                         _images[index + 1];
+
                                                     _images[index + 1] = temp;
                                                   });
                                                 }
@@ -1757,7 +1758,6 @@ ${doc['feedback']}
                                   ),
                                 ),
 
-                                ///remove bar////////
                                 Positioned(
                                   top: 5,
                                   right: 5,
@@ -1788,24 +1788,50 @@ ${doc['feedback']}
                       ),
                     )
                   : Text("No images selected"),
+
               SizedBox(height: 20),
+
               ElevatedButton(
                 onPressed: (_images.isEmpty || loading)
                     ? null
                     : () async {
                         await sendToGPT(_images);
                       },
-                child: Text(loading ? "Evaluating..." : "Submit Essay"),
+                style: ElevatedButton.styleFrom(
+                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                ),
+                child: Text(
+                  loading
+                      ? "Evaluating Essay..."
+                      : feedback.isNotEmpty
+                      ? "Essay Submitted ✓"
+                      : "Submit Essay",
+                  style: TextStyle(fontSize: 16),
+                ),
               ),
 
-              // 👇👇👇 PASTE HERE (JUST AFTER BUTTON)
+              SizedBox(height: 12),
+
+              if (loading)
+                Column(
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 10),
+                    Text(
+                      "Your essay is being evaluated...",
+                      style: TextStyle(fontSize: 15),
+                    ),
+                  ],
+                ),
+
               SizedBox(height: 20),
 
-              if (essayText.isNotEmpty) ...[
+              if (essayText.isNotEmpty || feedback.isNotEmpty) ...[
                 Text(
                   "Your Essay",
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
+
                 SizedBox(height: 10),
 
                 Container(
@@ -1826,6 +1852,7 @@ ${doc['feedback']}
                   "Feedback",
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
+
                 SizedBox(height: 10),
 
                 Container(
