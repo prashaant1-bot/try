@@ -136,11 +136,10 @@ class _ChatScreenState extends State<ChatScreen> {
     final uid = _currentUser?.uid;
     final myReaction = uid == null ? null : reactionMap[uid]?.toString();
 
-    final counts = <String, int>{'like': 0, 'dislike': 0};
+    final counts = <String, int>{'like': 0};
     for (final value in reactionMap.values) {
-      final reaction = value.toString();
-      if (counts.containsKey(reaction)) {
-        counts[reaction] = counts[reaction]! + 1;
+      if (value.toString() == 'like') {
+        counts['like'] = counts['like']! + 1;
       }
     }
 
@@ -201,12 +200,6 @@ class _ChatScreenState extends State<ChatScreen> {
             keyName: 'like',
             icon: Icons.thumb_up_alt_rounded,
             activeColor: Colors.green.shade600,
-          ),
-          const SizedBox(width: 6),
-          reactionButton(
-            keyName: 'dislike',
-            icon: Icons.thumb_down_alt_rounded,
-            activeColor: Colors.red.shade600,
           ),
         ],
       ),
