@@ -7,64 +7,20 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:1008194337197:android:63a846e32de86fb4b2c924",
+        "mobilesdk_app_id": "1:1008194337197:android:b39d766d5146f54ab2c924",
         "android_client_info": {
-          "package_name": "com.example.my_first_app"
+          "package_name": "com.prashant.aspirants"
         }
       },
       "oauth_client": [
         {
-          "client_id": "1008194337197-6ta5l3hgpuceav098268u5sp88kki2ka.apps.googleusercontent.com",
+          "client_id": "1008194337197-o4ba09g7sjdc2im8t1rnvgofs3q2s99o.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "com.example.my_first_app",
-            "certificate_hash": "2e2a9c7213c62b0800e3923fe1479d4bc312eb04"
-          }
-        },
-        {
-          "client_id": "1008194337197-o3tjqbg7dq3pdad5pq25c36kt219etk9.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.example.my_first_app",
+            "package_name": "com.prashant.aspirants",
             "certificate_hash": "56a865bd5d6538c5ddc81eff225b714f2cdbf7c7"
           }
         },
-        {
-          "client_id": "1008194337197-4ajm946ag8oaq4ct2qr69v1n1j6adpfk.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
-      "api_key": [
-        {
-          "current_key": "AIzaSyAmrjnY1QAQyTcOjtxYZxyWREBu6fP50Ng"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "1008194337197-4ajm946ag8oaq4ct2qr69v1n1j6adpfk.apps.googleusercontent.com",
-              "client_type": 3
-            },
-            {
-              "client_id": "1008194337197-jphejedepg6ul7n9gs000i43umlc28ti.apps.googleusercontent.com",
-              "client_type": 2,
-              "ios_info": {
-                "bundle_id": "com.example.upscApp"
-              }
-            }
-          ]
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:1008194337197:android:b477e85daa637c75b2c924",
-        "android_client_info": {
-          "package_name": "com.example.upsc_app"
-        }
-      },
-      "oauth_client": [
         {
           "client_id": "1008194337197-4ajm946ag8oaq4ct2qr69v1n1j6adpfk.apps.googleusercontent.com",
           "client_type": 3
