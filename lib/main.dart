@@ -1175,7 +1175,7 @@ class EssayScreen extends StatefulWidget {
   const EssayScreen({super.key, required this.date});
 
   @override
-  _EssayScreenState createState() => _EssayScreenState();
+  State<EssayScreen> createState() => _EssayScreenState();
 }
 
 class _EssayScreenState extends State<EssayScreen> {
@@ -1272,18 +1272,21 @@ ${doc['feedback']}
       final dimensions = dimensionsList.join(", ");
       final currentAffairs = currentAffairsList.join(", ");
 
-      print("📡 STEP 1: Calling Firebase Function...");
+      print("📡 STEP 1: Calling OpenAI API...");
 
-      final callable = FirebaseFunctions.instance.httpsCallable(
-        'evaluateEssay',
-      );
-
-      final result = await callable.call({
-        "messages": [
-          {
-            "role": "system",
-            "content":
-                """
+      final response = await http.post(
+        Uri.parse("https://api.openai.com/v1/chat/completions"),
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer api key",
+        },
+        body: jsonEncode({
+          "model": "gpt-4o",
+          "messages": [
+            {
+              "role": "system",
+              "content":
+                  """
 You are a strict and experienced UPSC CAPF paper 2 evaluator who has checked 1000+ copies.
 
 You follow my personal evaluation style.
@@ -1478,24 +1481,46 @@ Rules:
 
 If you fail to follow JSON format, the response is invalid.
 """,
-          },
-          {
-            "role": "user",
-            "content": [
-              {
-                "type": "text",
-                "text":
-                    "These are multiple pages of one essay. Read them in order and evaluate as a single essay. Evaluate this UPSC capf essay strictly as per instructions",
-              },
-              ...imageMessages,
-            ],
-          },
-        ],
-      });
+            },
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text":
+                      "These are multiple pages of one essay. Read them in order and evaluate as a single essay.",
+                },
+                ...imageMessages,
+              ],
+            },
+          ],
+          "max_tokens": 2500,
+        }),
+      );
 
-      print("✅ STEP 2: Function response received");
+      print("✅ STEP 2: OpenAI response received");
 
-      String fullResponse = result.data['result'] ?? "";
+      print("STATUS CODE:");
+      print(response.statusCode);
+
+      print("HEADERS:");
+      print(response.headers);
+
+      print("RAW RESPONSE:");
+      print(response.body);
+
+      if (response.body.isEmpty) {
+        throw Exception("OpenAI returned empty response body");
+      }
+
+      final decoded = jsonDecode(response.body);
+
+      String fullResponse =
+          decoded['choices']?[0]?['message']?['content']?.toString() ?? "";
+
+      if (fullResponse.isEmpty) {
+        throw Exception("OpenAI returned empty content");
+      }
 
       print("📝 FULL RESPONSE:");
       print(fullResponse);
@@ -1505,11 +1530,13 @@ If you fail to follow JSON format, the response is invalid.
       double score = 0;
 
       try {
+        // Remove markdown formatting
         fullResponse = fullResponse
             .replaceAll("```json", "")
             .replaceAll("```", "")
             .trim();
 
+        // Extract only JSON portion
         final start = fullResponse.indexOf("{");
         final end = fullResponse.lastIndexOf("}");
 
@@ -1519,14 +1546,24 @@ If you fail to follow JSON format, the response is invalid.
 
         final parsed = jsonDecode(fullResponse);
 
+        // Essay
         essay = parsed['essay']?.toString() ?? "";
 
+        // Feedback
         feedbackText = parsed['feedback']?.toString() ?? "";
 
-        score = (parsed['score'] is num)
-            ? (parsed['score'] as num).toDouble()
-            : double.tryParse(parsed['score'].toString()) ?? 0;
+        // Robust score extraction
+        final rawScore = parsed['score']?.toString() ?? "0";
 
+        final match = RegExp(r'(\d+(\.\d+)?)').firstMatch(rawScore);
+
+        if (match != null) {
+          score = double.tryParse(match.group(0)!) ?? 0;
+        } else {
+          score = 0;
+        }
+
+        // Fallbacks
         if (essay.trim().isEmpty) {
           essay = "Essay extraction failed.";
         }
@@ -1539,6 +1576,7 @@ If you fail to follow JSON format, the response is invalid.
       } catch (e) {
         print("❌ JSON FAILED: $e");
 
+        // Fallback manual extraction
         if (fullResponse.contains("STRUCTURE")) {
           final parts = fullResponse.split("STRUCTURE");
 
@@ -1549,7 +1587,14 @@ If you fail to follow JSON format, the response is invalid.
           feedbackText = fullResponse;
         }
 
-        score = extractScore(fullResponse);
+        // Backup score extraction from raw response
+        final scoreMatch = RegExp(r'(\d+(\.\d+)?)').firstMatch(fullResponse);
+
+        if (scoreMatch != null) {
+          score = double.tryParse(scoreMatch.group(0)!) ?? 0;
+        } else {
+          score = 0;
+        }
 
         if (feedbackText.trim().isEmpty) {
           feedbackText = "Could not generate feedback.";
@@ -1616,11 +1661,13 @@ If you fail to follow JSON format, the response is invalid.
       }, SetOptions(merge: true));
 
       print("✅ STEP 8: Firestore completed");
-    } catch (e) {
-      print("❌ ERROR OCCURRED: $e");
+    } catch (e, stackTrace) {
+      print("❌ ERROR OCCURRED:");
+      print(e);
+      print(stackTrace);
 
       setState(() {
-        feedback = "Error occurred";
+        feedback = "Error occurred: $e";
         loading = false;
       });
     }
@@ -1629,18 +1676,18 @@ If you fail to follow JSON format, the response is invalid.
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Upload Essay")),
+      appBar: AppBar(title: const Text("Upload Essay")),
       body: Padding(
-        padding: EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
         child: SingleChildScrollView(
           child: Column(
             children: [
               ElevatedButton(
                 onPressed: pickImages,
-                child: Text("Upload Image"),
+                child: const Text("Upload Image"),
               ),
 
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
 
               _images.isNotEmpty
                   ? SizedBox(
@@ -1650,7 +1697,7 @@ If you fail to follow JSON format, the response is invalid.
                         itemCount: _images.length,
                         itemBuilder: (context, index) {
                           return Padding(
-                            padding: EdgeInsets.only(right: 8),
+                            padding: const EdgeInsets.only(right: 8),
                             child: Stack(
                               children: [
                                 ClipRRect(
@@ -1667,7 +1714,7 @@ If you fail to follow JSON format, the response is invalid.
                                   top: 5,
                                   left: 5,
                                   child: Container(
-                                    padding: EdgeInsets.symmetric(
+                                    padding: const EdgeInsets.symmetric(
                                       horizontal: 6,
                                       vertical: 4,
                                     ),
@@ -1677,63 +1724,10 @@ If you fail to follow JSON format, the response is invalid.
                                     ),
                                     child: Text(
                                       "Page ${index + 1}",
-                                      style: TextStyle(
+                                      style: const TextStyle(
                                         color: Colors.white,
                                         fontSize: 12,
                                       ),
-                                    ),
-                                  ),
-                                ),
-
-                                Positioned(
-                                  bottom: 5,
-                                  left: 5,
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      color: Colors.black54,
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        IconButton(
-                                          icon: Icon(
-                                            Icons.arrow_back,
-                                            color: Colors.white,
-                                            size: 18,
-                                          ),
-                                          onPressed: index > 0
-                                              ? () {
-                                                  setState(() {
-                                                    final temp = _images[index];
-
-                                                    _images[index] =
-                                                        _images[index - 1];
-
-                                                    _images[index - 1] = temp;
-                                                  });
-                                                }
-                                              : null,
-                                        ),
-                                        IconButton(
-                                          icon: Icon(
-                                            Icons.arrow_forward,
-                                            color: Colors.white,
-                                            size: 18,
-                                          ),
-                                          onPressed: index < _images.length - 1
-                                              ? () {
-                                                  setState(() {
-                                                    final temp = _images[index];
-
-                                                    _images[index] =
-                                                        _images[index + 1];
-
-                                                    _images[index + 1] = temp;
-                                                  });
-                                                }
-                                              : null,
-                                        ),
-                                      ],
                                     ),
                                   ),
                                 ),
@@ -1748,12 +1742,12 @@ If you fail to follow JSON format, the response is invalid.
                                       });
                                     },
                                     child: Container(
-                                      padding: EdgeInsets.all(4),
-                                      decoration: BoxDecoration(
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: const BoxDecoration(
                                         color: Colors.red,
                                         shape: BoxShape.circle,
                                       ),
-                                      child: Icon(
+                                      child: const Icon(
                                         Icons.close,
                                         color: Colors.white,
                                         size: 16,
@@ -1767,9 +1761,9 @@ If you fail to follow JSON format, the response is invalid.
                         },
                       ),
                     )
-                  : Text("No images selected"),
+                  : const Text("No images selected"),
 
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
 
               ElevatedButton(
                 onPressed: (_images.isEmpty || loading)
@@ -1777,73 +1771,60 @@ If you fail to follow JSON format, the response is invalid.
                     : () async {
                         await sendToGPT(_images);
                       },
-                style: ElevatedButton.styleFrom(
-                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                ),
-                child: Text(
-                  loading
-                      ? "Evaluating Essay..."
-                      : feedback.isNotEmpty
-                      ? "Essay Submitted ✓"
-                      : "Submit Essay",
-                  style: TextStyle(fontSize: 16),
-                ),
+                child: Text(loading ? "Evaluating Essay..." : "Submit Essay"),
               ),
 
-              SizedBox(height: 12),
+              const SizedBox(height: 20),
 
               if (loading)
                 Column(
-                  children: [
+                  children: const [
                     CircularProgressIndicator(),
                     SizedBox(height: 10),
-                    Text(
-                      "Your essay is being evaluated...",
-                      style: TextStyle(fontSize: 15),
-                    ),
+                    Text("Your essay is being evaluated..."),
                   ],
                 ),
 
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
 
               if (essayText.isNotEmpty || feedback.isNotEmpty) ...[
-                Text(
+                const Text(
                   "Your Essay",
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
 
-                SizedBox(height: 10),
+                const SizedBox(height: 10),
 
                 Container(
-                  padding: EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.grey[200],
+                    color: Colors.grey,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
                     essayText,
-                    style: TextStyle(fontSize: 15, height: 1.5),
+                    style: const TextStyle(fontSize: 15, height: 1.5),
                   ),
                 ),
 
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
 
-                Text(
+                const Text(
                   "Feedback",
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
 
-                SizedBox(height: 10),
+                const SizedBox(height: 10),
 
                 Container(
-                  padding: EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.blue[50],
+                    color: Colors.blueAccent,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
                     feedback,
-                    style: TextStyle(fontSize: 15, height: 1.5),
+                    style: const TextStyle(fontSize: 15, height: 1.5),
                   ),
                 ),
               ],
