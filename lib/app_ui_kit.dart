@@ -105,7 +105,8 @@ abstract final class AppShadows {
 // ---------------------------------------------------------------------------
 
 abstract final class AppTypography {
-  static const String? fontFamily = null; // use platform default; set if you add fonts
+  static const String? fontFamily =
+      null; // use platform default; set if you add fonts
 
   static TextStyle display(Color color) => TextStyle(
     fontFamily: fontFamily,
@@ -216,7 +217,10 @@ abstract final class AppTheme {
           backgroundColor: AppPalette.primary,
           foregroundColor: Colors.white,
           minimumSize: const Size.fromHeight(52),
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg,
+            vertical: AppSpacing.sm,
+          ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadii.md),
           ),
@@ -227,7 +231,10 @@ abstract final class AppTheme {
         style: OutlinedButton.styleFrom(
           foregroundColor: AppPalette.primary,
           minimumSize: const Size.fromHeight(52),
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg,
+            vertical: AppSpacing.sm,
+          ),
           side: const BorderSide(color: AppPalette.primary, width: 1.4),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadii.md),
@@ -238,7 +245,10 @@ abstract final class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppPalette.surface,
-        contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
+        ),
         hintStyle: AppTypography.body(AppPalette.inkSubtle),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadii.md),
@@ -282,18 +292,11 @@ class AppGradientBackground extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFFF8FAFF),
-            AppPalette.scaffold,
-            Color(0xFFF3F6FD),
-          ],
+          colors: [Color(0xFFF8FAFF), AppPalette.scaffold, Color(0xFFF3F6FD)],
           stops: [0.0, 0.45, 1.0],
         ),
       ),
-      child: Padding(
-        padding: padding ?? EdgeInsets.zero,
-        child: child,
-      ),
+      child: Padding(padding: padding ?? EdgeInsets.zero, child: child),
     );
   }
 }
@@ -351,7 +354,11 @@ class AppHeroIcon extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: LinearGradient(colors: colors, begin: Alignment.topLeft, end: Alignment.bottomRight),
+        gradient: LinearGradient(
+          colors: colors,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         boxShadow: AppShadows.soft(),
       ),
       child: Icon(icon, size: iconSize, color: Colors.white),
@@ -384,13 +391,19 @@ class AppSectionHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (overline != null) ...[
-                Text(overline!, style: AppTypography.caption(AppPalette.primary)),
+                Text(
+                  overline!,
+                  style: AppTypography.caption(AppPalette.primary),
+                ),
                 const SizedBox(height: AppSpacing.xxs),
               ],
               Text(title, style: AppTypography.title(AppPalette.ink)),
               if (subtitle != null) ...[
                 const SizedBox(height: AppSpacing.xs),
-                Text(subtitle!, style: AppTypography.subtitle(AppPalette.inkMuted)),
+                Text(
+                  subtitle!,
+                  style: AppTypography.subtitle(AppPalette.inkMuted),
+                ),
               ],
             ],
           ),
@@ -449,14 +462,24 @@ class AppPrimaryButton extends StatelessWidget {
                       const SizedBox(
                         width: 20,
                         height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2.2, color: Colors.white),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.2,
+                          color: Colors.white,
+                        ),
                       ),
                       const SizedBox(width: AppSpacing.sm),
                     ] else if (icon != null) ...[
                       Icon(icon, color: Colors.white, size: 20),
                       const SizedBox(width: AppSpacing.sm),
                     ],
-                    Text(label, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+                    Text(
+                      label,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -489,7 +512,9 @@ class AppSecondaryButton extends StatelessWidget {
         foregroundColor: AppPalette.primary,
         minimumSize: const Size.fromHeight(52),
         side: const BorderSide(color: AppPalette.primary, width: 1.4),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadii.md),
+        ),
         textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
       ),
       child: Row(
@@ -525,7 +550,10 @@ class AppPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xxs + 2),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xxs + 2,
+      ),
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(AppRadii.pill),
@@ -538,7 +566,12 @@ class AppPill extends StatelessWidget {
             Icon(icon, size: 14, color: foreground),
             const SizedBox(width: AppSpacing.xxs),
           ],
-          Text(label, style: AppTypography.caption(foreground).copyWith(fontWeight: FontWeight.w600)),
+          Text(
+            label,
+            style: AppTypography.caption(
+              foreground,
+            ).copyWith(fontWeight: FontWeight.w600),
+          ),
         ],
       ),
     );

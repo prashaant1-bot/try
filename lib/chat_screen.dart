@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'app_ui_kit.txt';
 
 class ChatScreen extends StatefulWidget {
   final String dateId;
@@ -331,8 +332,8 @@ class _ChatScreenState extends State<ChatScreen> {
                           ),
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: isMe ? Colors.blue : Colors.grey[300],
-                            borderRadius: BorderRadius.circular(14),
+                            color: isMe ? AppChatPalette.bubbleMe : AppChatPalette.bubbleOther,
+                            borderRadius: BorderRadius.circular(AppRadii.md),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -341,13 +342,13 @@ class _ChatScreenState extends State<ChatScreen> {
                                 data['name'] ?? "User",
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  color: isMe ? Colors.white : Colors.black,
+                                  color: isMe ? AppChatPalette.bubbleMeText : AppChatPalette.bubbleOtherText,
                                 ),
                               ),
                               const SizedBox(height: 5),
                               _buildReplyPreview(data, isMe),
                               _buildMessageBody(data, isMe),
-                              _buildReactionsRow(data, docRef, isMe),
+                              // _buildReactionsRow(data, docRef, isMe),
                             ],
                           ),
                         ),
@@ -419,7 +420,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     const SizedBox(width: 10),
 
                     IconButton(
-                      icon: const Icon(Icons.send, color: Colors.blue),
+                      icon: const Icon(Icons.send, color: AppPalette.primary),
                       onPressed: sendMessage,
                     ),
                   ],
