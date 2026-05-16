@@ -1,0 +1,47 @@
+////////////////////////////////////////////////////////////
+//////////////full essay screen/////////////////////////////
+
+class FullEssayScreen extends StatelessWidget {
+  final data;
+
+  const FullEssayScreen({super.key, required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text("Essay Details")),
+      body: Padding(
+        padding: EdgeInsets.all(16),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Essay",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 10),
+              Text(data['essay'] ?? ""),
+
+              SizedBox(height: 20),
+
+              Text(
+                "Feedback",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 10),
+              Text(data['feedback'] ?? ""),
+
+              SizedBox(height: 20),
+
+              Text(
+                "Score: ${data['score']}/20",
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

@@ -1,0 +1,670 @@
+////////////////////////////////////////////////////////////
+/// 🤖 YOUR ORIGINAL ESSAY SCREEN (UNCHANGED LOGIC)
+////////////////////////////////////////////////////////////
+
+class EssayScreen extends StatefulWidget {
+  final String date;
+
+  const EssayScreen({super.key, required this.date});
+
+  @override
+  State<EssayScreen> createState() => _EssayScreenState();
+}
+
+class _EssayScreenState extends State<EssayScreen> {
+  List<File> _images = [];
+
+  String feedback = "";
+  String essayText = "";
+
+  bool loading = false;
+
+  final picker = ImagePicker();
+
+  Future pickImages() async {
+    final pickedFiles = await picker.pickMultiImage();
+
+    if (pickedFiles.isNotEmpty) {
+      setState(() {
+        _images = pickedFiles.map((e) => File(e.path)).toList();
+
+        feedback = "";
+        essayText = "";
+      });
+    }
+  }
+
+  double extractScore(String text) {
+    final regex = RegExp(r'(\d+(\.\d+)?)/20');
+
+    final match = regex.firstMatch(text);
+
+    if (match != null) {
+      return double.tryParse(match.group(1) ?? "0") ?? 0;
+    }
+
+    return 0;
+  }
+
+  Future sendToGPT(List<File> imageFiles) async {
+    print("🚀 STEP 0: sendToGPT started");
+
+    setState(() {
+      loading = true;
+    });
+
+    try {
+      List<Map<String, dynamic>> imageMessages = [];
+
+      for (var file in imageFiles) {
+        final bytes = await file.readAsBytes();
+        final base64Image = base64Encode(bytes);
+
+        imageMessages.add({
+          "type": "image_url",
+          "image_url": {"url": "data:image/jpeg;base64,$base64Image"},
+        });
+      }
+
+      final snapshot = await FirebaseFirestore.instance
+          .collection('training_feedback')
+          .limit(4)
+          .get();
+
+      String trainingData = "";
+
+      for (var doc in snapshot.docs) {
+        trainingData +=
+            """
+Example Essay:
+${doc['essay']}
+
+Example Feedback:
+${doc['feedback']}
+
+---
+""";
+      }
+
+      final topicDoc = await FirebaseFirestore.instance
+          .collection('topics')
+          .doc(widget.date)
+          .get();
+
+      final topicData = topicDoc.data() ?? {};
+
+      final topic = topicData['topic'] ?? "";
+      final contextInfo = topicData['context'] ?? "";
+
+      final dimensionsList = List<String>.from(topicData['dimensions'] ?? []);
+
+      final currentAffairsList = List<String>.from(
+        topicData['currentAffairs'] ?? [],
+      );
+
+      final dimensions = dimensionsList.join(", ");
+      final currentAffairs = currentAffairsList.join(", ");
+
+      print("📡 STEP 1: Calling OpenAI API...");
+
+      final response = await http.post(
+        Uri.parse("https://api.openai.com/v1/chat/completions"),
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer api key",
+        },
+        body: jsonEncode({
+          "model": "gpt-4o",
+          "messages": [
+            {
+              "role": "system",
+              "content":
+                  """
+You are a strict and experienced UPSC CAPF paper 2 evaluator who has checked 1000+ copies.
+
+You follow my personal evaluation style.
+
+From the examples below, learn:
+- Tone: constructive, honest, mentor-like (not robotic)
+- Depth: specific, not generic
+- Approach: always justify marks and give actionable feedback
+
+Do NOT copy phrases from examples.
+Do NOT repeat patterns blindly.
+Apply the same thinking style to a NEW essay.
+
+------------------------
+TRAINING EXAMPLES:
+$trainingData
+------------------------
+
+CURRENT ESSAY TOPIC:
+$topic
+
+TOPIC CONTEXT:
+$contextInfo
+
+EXPECTED DIMENSIONS:
+$dimensions
+
+CURRENT AFFAIRS CONNECTIONS:
+$currentAffairs
+
+TASK:
+
+These are multiple pages of a single UPSC essay.
+The images are in order. Combine them into one continuous essay.
+Ignore page breaks.
+
+First extract and write:
+
+ESSAY:
+<clean essay text>
+
+------------------------
+
+EVALUATION LOGIC:
+
+Step 1: Evaluate the essay quality internally:
+- STRONG
+- AVERAGE
+- WEAK
+
+Step 2:
+- HIGH → mostly strengths, minimal suggestions
+- AVERAGE → balanced feedback
+- WEAK → detailed improvements
+
+Step 3:
+Before suggesting anything, check:
+“Is this missing?”
+
+If NOT missing → DO NOT suggest.
+
+------------------------
+TOPIC RELEVANCE RULES:
+
+- Evaluate whether the essay actually addresses the core demand of the topic.
+- Check whether the candidate understands the contemporary relevance of the topic.
+- Reward essays that connect with current affairs naturally.
+- Reward multidimensional analysis.
+- Penalize essays that become generic and could fit any topic.
+- Penalize repetition and vague philosophical writing disconnected from topic demand.
+- Check whether important dimensions are missing.
+- Do not expect every dimension, but major missing dimensions should affect marks.
+
+A strong CAPF essay usually contains:
+- social awareness
+- administrative understanding
+- contemporary relevance
+- examples/current affairs
+- clear structure
+- practical solutions
+- mature conclusion
+
+Weak essays are:
+- generic
+- repetitive
+- emotionally shallow
+- lacking examples
+- disconnected from current realities
+- overly philosophical without substance
+
+------------------------
+
+MARKING SCHEME:
+
+STRUCTURE (0–8)
+QUALITY OF CONTENT (0–8)
+LANGUAGE (0–4)
+
+TOTAL = 20
+
+------------------------
+
+SCORING CALIBRATION:
+
+06–09 = weak essay
+10–13 = average essay
+14–16 = strong essay
+17–20 = exceptional essay rarely achieved
+
+Do not inflate marks.
+Be realistic and strict like actual CAPF evaluation.
+
+----------------------------
+
+FORMAT:
+
+STRUCTURE (x/8):
+...
+
+---
+
+QUALITY OF CONTENT (x/8):
+...
+
+---
+
+LANGUAGE (x/4):
+...
+
+---
+
+STRENGTHS:
+...
+
+---
+
+MISTAKES:
+...
+
+---
+
+HOW TO IMPROVE:
+...
+
+---
+
+FINAL SCORE: __/20
+
+------------------------
+
+RULES:
+
+- Do NOT suggest things already present in the essay.
+- Before giving any criticism, first verify whether that weakness genuinely exists.
+- Avoid generic feedback and vague observations.
+- Every criticism must directly connect to the actual essay.
+
+- Do not invent weaknesses simply to make the feedback look detailed.
+- Be specific, evidence-based, and evaluator-like.
+
+- If the candidate introduces relevant, meaningful, and non-generic dimensions beyond the provided topic guidance, reward originality.
+- Do not rigidly expect exact dimensions listed in topic guidance.
+- Do not penalize creative or unconventional approaches if they remain connected to the topic.
+
+- Strong essays should receive mostly strengths with limited corrections.
+- Weak essays should receive detailed, practical, and actionable improvement suggestions.
+
+- Maintain a constructive, mentor-like, and realistic evaluation tone.
+- Be honest, balanced, and strict like an actual CAPF evaluator.
+
+------------------------
+
+FINAL OUTPUT RULE (VERY IMPORTANT):
+
+You must return your response ONLY in valid JSON format.
+
+Do NOT write anything before or after JSON.
+
+Format strictly like this:
+
+{
+  "essay": "<clean extracted essay text>",
+  "feedback": "<full evaluation exactly as per format above>",
+  "score": <final score number only>
+}
+
+Rules:
+- "score" can be decimal like 16.5
+- Do NOT write "/20" inside score
+- Do NOT add extra text outside JSON
+- Ensure valid JSON (no trailing commas, proper quotes)
+
+If you fail to follow JSON format, the response is invalid.
+""",
+            },
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text":
+                      "These are multiple pages of one essay. Read them in order and evaluate as a single essay.",
+                },
+                ...imageMessages,
+              ],
+            },
+          ],
+          "max_tokens": 2500,
+        }),
+      );
+
+      print("✅ STEP 2: OpenAI response received");
+
+      print("STATUS CODE:");
+      print(response.statusCode);
+
+      print("HEADERS:");
+      print(response.headers);
+
+      print("RAW RESPONSE:");
+      print(response.body);
+
+      if (response.body.isEmpty) {
+        throw Exception("OpenAI returned empty response body");
+      }
+
+      final decoded = jsonDecode(response.body);
+
+      String fullResponse =
+          decoded['choices']?[0]?['message']?['content']?.toString() ?? "";
+
+      if (fullResponse.isEmpty) {
+        throw Exception("OpenAI returned empty content");
+      }
+
+      print("📝 FULL RESPONSE:");
+      print(fullResponse);
+
+      String essay = "";
+      String feedbackText = "";
+      double score = 0;
+
+      try {
+        // Remove markdown formatting
+        fullResponse = fullResponse
+            .replaceAll("```json", "")
+            .replaceAll("```", "")
+            .trim();
+
+        // Extract only JSON portion
+        final start = fullResponse.indexOf("{");
+        final end = fullResponse.lastIndexOf("}");
+
+        if (start != -1 && end != -1) {
+          fullResponse = fullResponse.substring(start, end + 1);
+        }
+
+        final parsed = jsonDecode(fullResponse);
+
+        // Essay
+        essay = parsed['essay']?.toString() ?? "";
+
+        // Feedback
+        feedbackText = parsed['feedback']?.toString() ?? "";
+
+        // Robust score extraction
+        final rawScore = parsed['score']?.toString() ?? "0";
+
+        final match = RegExp(r'(\d+(\.\d+)?)').firstMatch(rawScore);
+
+        if (match != null) {
+          score = double.tryParse(match.group(0)!) ?? 0;
+        } else {
+          score = 0;
+        }
+
+        // Fallbacks
+        if (essay.trim().isEmpty) {
+          essay = "Essay extraction failed.";
+        }
+
+        if (feedbackText.trim().isEmpty) {
+          feedbackText = "Feedback generation failed.";
+        }
+
+        print("✅ JSON PARSED SUCCESSFULLY");
+      } catch (e) {
+        print("❌ JSON FAILED: $e");
+
+        // Fallback manual extraction
+        if (fullResponse.contains("STRUCTURE")) {
+          final parts = fullResponse.split("STRUCTURE");
+
+          essay = parts[0].replaceFirst("ESSAY:", "").trim();
+
+          feedbackText = "STRUCTURE${parts[1]}";
+        } else {
+          feedbackText = fullResponse;
+        }
+
+        // Backup score extraction from raw response
+        final scoreMatch = RegExp(r'(\d+(\.\d+)?)').firstMatch(fullResponse);
+
+        if (scoreMatch != null) {
+          score = double.tryParse(scoreMatch.group(0)!) ?? 0;
+        } else {
+          score = 0;
+        }
+
+        if (feedbackText.trim().isEmpty) {
+          feedbackText = "Could not generate feedback.";
+        }
+      }
+
+      setState(() {
+        feedback = feedbackText;
+        essayText = essay;
+        loading = false;
+      });
+
+      final user = FirebaseAuth.instance.currentUser;
+
+      final uid = user!.uid;
+
+      final now = DateTime.now();
+
+      final dayId = "${now.year}-${now.month}-${now.day}";
+
+      final submissionRef = FirebaseFirestore.instance
+          .collection('essays')
+          .doc(widget.date)
+          .collection('submissions')
+          .doc(uid);
+
+      final userEssayRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('essays')
+          .doc(dayId);
+
+      final userDoc = await userEssayRef.get();
+
+      double previousScore = 0;
+
+      if (userDoc.exists) {
+        previousScore = (userDoc.data()?['score'] ?? 0).toDouble();
+      }
+
+      await submissionRef.set({
+        'essay': essay,
+        'feedback': feedbackText,
+        'score': score,
+        'name': user.displayName ?? "Anonymous",
+        'uid': uid,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+
+      await userEssayRef.set({
+        'score': score,
+        'essay': essay,
+        'feedback': feedbackText,
+        'topic': topic,
+        'context': contextInfo,
+        'dimensions': dimensionsList,
+        'currentAffairs': currentAffairsList,
+        'rawModelResponse': fullResponse,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+
+      await FirebaseFirestore.instance.collection('users').doc(uid).set({
+        'totalScore': FieldValue.increment(score - previousScore),
+      }, SetOptions(merge: true));
+
+      print("✅ STEP 8: Firestore completed");
+    } catch (e, stackTrace) {
+      print("❌ ERROR OCCURRED:");
+      print(e);
+      print(stackTrace);
+
+      setState(() {
+        feedback = "Error occurred: $e";
+        loading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("Upload Essay")),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              ElevatedButton(
+                onPressed: pickImages,
+                child: const Text("Upload Image"),
+              ),
+
+              const SizedBox(height: 20),
+
+              _images.isNotEmpty
+                  ? SizedBox(
+                      height: 200,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _images.length,
+                        itemBuilder: (context, index) {
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: Stack(
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: Image.file(
+                                    _images[index],
+                                    width: 120,
+                                    height: 180,
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+
+                                Positioned(
+                                  top: 5,
+                                  left: 5,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black87,
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      "Page ${index + 1}",
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+
+                                Positioned(
+                                  top: 5,
+                                  right: 5,
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        _images.removeAt(index);
+                                      });
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: const BoxDecoration(
+                                        color: Colors.red,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.close,
+                                        color: Colors.white,
+                                        size: 16,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    )
+                  : const Text("No images selected"),
+
+              const SizedBox(height: 20),
+
+              ElevatedButton(
+                onPressed: (_images.isEmpty || loading)
+                    ? null
+                    : () async {
+                        await sendToGPT(_images);
+                      },
+                child: Text(loading ? "Evaluating Essay..." : "Submit Essay"),
+              ),
+
+              const SizedBox(height: 20),
+
+              if (loading)
+                Column(
+                  children: const [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 10),
+                    Text("Your essay is being evaluated..."),
+                  ],
+                ),
+
+              const SizedBox(height: 20),
+
+              if (essayText.isNotEmpty || feedback.isNotEmpty) ...[
+                const Text(
+                  "Your Essay",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+
+                const SizedBox(height: 10),
+
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    essayText,
+                    style: const TextStyle(fontSize: 15, height: 1.5),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                const Text(
+                  "Feedback",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+
+                const SizedBox(height: 10),
+
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.blueAccent,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    feedback,
+                    style: const TextStyle(fontSize: 15, height: 1.5),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
