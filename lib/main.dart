@@ -3,10 +3,10 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'chat_screen.dart';
+import 'app_ui_kit.txt';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_functions/cloud_functions.dart';
@@ -18,6 +18,8 @@ void main() async {
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     FirebaseAuth.instance.authStateChanges().listen((User? user) {
@@ -32,20 +34,7 @@ class MyApp extends StatelessWidget {
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        scaffoldBackgroundColor: Color(0xFFF5F7FB),
-        appBarTheme: AppBarTheme(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          titleTextStyle: TextStyle(
-            color: Colors.black,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-          iconTheme: IconThemeData(color: Colors.black),
-        ),
-      ),
+      theme: AppTheme.light,
       home: FirebaseAuth.instance.currentUser == null
           ? LoginScreen()
           : HomeScreen(),
@@ -58,6 +47,8 @@ class MyApp extends StatelessWidget {
 /////////////////////////////////////////////////////////////////////////////
 
 class LoginScreen extends StatelessWidget {
+  const LoginScreen({super.key});
+
   Future<User?> signInWithGoogle() async {
     print("🔥 Google Sign-In function started");
 
@@ -111,19 +102,41 @@ class LoginScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-        child: ElevatedButton(
-          onPressed: () async {
-            User? user = await signInWithGoogle();
+      body: AppGradientBackground(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: AppGlassCard(
+              margin: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const AppHeroIcon(icon: Icons.school_rounded),
+                  const SizedBox(height: AppSpacing.md),
+                  const AppSectionHeader(
+                    overline: "Welcome",
+                    title: "UPSC Essay Practice",
+                    subtitle: "Sign in and continue your daily answer writing.",
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  AppPrimaryButton(
+                    label: "Sign in with Google",
+                    icon: Icons.login_rounded,
+                    onPressed: () async {
+                      User? user = await signInWithGoogle();
 
-            if (user != null) {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => HomeScreen()),
-              );
-            }
-          },
-          child: Text("Sign in with Google"),
+                      if (user != null) {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(builder: (context) => HomeScreen()),
+                        );
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -135,14 +148,16 @@ class LoginScreen extends StatelessWidget {
 ////////////////////////////////////////////////////////////
 
 class HomeScreen extends StatelessWidget {
+  const HomeScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Daily Practice"),
+        title: const Text("Daily Practice"),
         actions: [
           IconButton(
-            icon: Icon(Icons.logout),
+            icon: const Icon(Icons.logout),
             onPressed: () async {
               await FirebaseAuth.instance.signOut();
 
@@ -155,89 +170,48 @@ class HomeScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: Center(
-        child: Container(
-          margin: EdgeInsets.symmetric(horizontal: 20),
-          padding: EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black12,
-                blurRadius: 10,
-                offset: Offset(0, 5),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // 🔥 Icon
-              Icon(Icons.edit_note, size: 60, color: Colors.blue),
-
-              SizedBox(height: 16),
-
-              // 🔥 Title//////////
-              Text(
-                "Essay Practice",
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-
-              SizedBox(height: 10),
-
-              // 🔥 Subtitle////////
-              Text(
-                "Practice daily UPSC essays and get feedback",
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey[600]),
-              ),
-
-              SizedBox(height: 20),
-
-              // 🔥 Button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    padding: EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+      body: AppGradientBackground(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: AppGlassCard(
+              margin: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const AppHeroIcon(icon: Icons.edit_note_rounded),
+                  const SizedBox(height: AppSpacing.md),
+                  const AppSectionHeader(
+                    title: "Essay Practice",
+                    subtitle: "Practice daily UPSC essays and get feedback",
                   ),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => DateScreen()),
-                    );
-                  },
-                  child: Text("Start Practice", style: TextStyle(fontSize: 16)),
-                ),
-              ),
-              ////////dashboard button/////
-              SizedBox(height: 10),
-
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    padding: EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                  const SizedBox(height: AppSpacing.lg),
+                  AppPrimaryButton(
+                    label: "Start Practice",
+                    icon: Icons.play_arrow_rounded,
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => DateScreen()),
+                      );
+                    },
                   ),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => DashboardScreen(),
-                      ),
-                    );
-                  },
-                  child: Text("My Dashboard", style: TextStyle(fontSize: 16)),
-                ),
+                  const SizedBox(height: AppSpacing.sm),
+                  AppSecondaryButton(
+                    label: "My Dashboard",
+                    icon: Icons.space_dashboard_rounded,
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => DashboardScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -248,6 +222,8 @@ class HomeScreen extends StatelessWidget {
 //////////////dashboard screen//////////////////////////
 
 class DashboardScreen extends StatefulWidget {
+  const DashboardScreen({super.key});
+
   @override
   _DashboardScreenState createState() => _DashboardScreenState();
 }
@@ -462,6 +438,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
 ////////////////////////////////////////////////////////////
 
 class EssayHistoryScreen extends StatelessWidget {
+  const EssayHistoryScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     final uid = FirebaseAuth.instance.currentUser!.uid;
@@ -559,7 +537,7 @@ class EssayHistoryScreen extends StatelessWidget {
 class UserEssayDetailScreen extends StatelessWidget {
   final data;
 
-  UserEssayDetailScreen({required this.data});
+  const UserEssayDetailScreen({super.key, required this.data});
 
   @override
   Widget build(BuildContext context) {
@@ -670,6 +648,8 @@ class UserEssayDetailScreen extends StatelessWidget {
 ////////////////////////////////////////////////////////////
 
 class DateScreen extends StatelessWidget {
+  const DateScreen({super.key});
+
   List<String> generateDates() {
     List<String> dates = [];
 
@@ -828,7 +808,7 @@ class DateScreen extends StatelessWidget {
 class EssayDetailScreen extends StatelessWidget {
   final String date;
 
-  EssayDetailScreen({required this.date});
+  const EssayDetailScreen({super.key, required this.date});
 
   @override
   Widget build(BuildContext context) {
@@ -1144,7 +1124,7 @@ class EssayDetailScreen extends StatelessWidget {
 class FullEssayScreen extends StatelessWidget {
   final data;
 
-  FullEssayScreen({required this.data});
+  const FullEssayScreen({super.key, required this.data});
 
   @override
   Widget build(BuildContext context) {
@@ -1211,7 +1191,7 @@ class _EssayScreenState extends State<EssayScreen> {
   Future pickImages() async {
     final pickedFiles = await picker.pickMultiImage();
 
-    if (pickedFiles != null && pickedFiles.isNotEmpty) {
+    if (pickedFiles.isNotEmpty) {
       setState(() {
         _images = pickedFiles.map((e) => File(e.path)).toList();
 

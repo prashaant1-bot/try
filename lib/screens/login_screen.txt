@@ -1,0 +1,100 @@
+/////////////////////////////////////////////////////////////////////////////
+///////////////////////login screen//////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////
+
+class LoginScreen extends StatelessWidget {
+  const LoginScreen({super.key});
+
+  Future<User?> signInWithGoogle() async {
+    print("🔥 Google Sign-In function started");
+
+    final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+
+    if (googleUser == null) return null;
+
+    final GoogleSignInAuthentication googleAuth =
+        await googleUser.authentication;
+
+    final credential = GoogleAuthProvider.credential(
+      accessToken: googleAuth.accessToken,
+      idToken: googleAuth.idToken,
+    );
+
+    final userCredential = await FirebaseAuth.instance.signInWithCredential(
+      credential,
+    );
+
+    final user = userCredential.user;
+
+    if (user != null) {
+      final uid = user.uid;
+
+      print("UID: $uid");
+      print("Name: ${user.displayName}");
+      print("Email: ${user.email}");
+
+      final userRef = FirebaseFirestore.instance.collection('users').doc(uid);
+
+      final doc = await userRef.get();
+
+      if (!doc.exists) {
+        await userRef.set({
+          'name': user.displayName ?? "",
+          'email': user.email ?? "",
+          'photoUrl': user.photoURL ?? "",
+          'createdAt': FieldValue.serverTimestamp(),
+          'totalScore': 0,
+        });
+
+        print("✅ User saved in Firestore");
+      } else {
+        print("ℹ️ User already exists");
+      }
+    }
+
+    return user;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: AppGradientBackground(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: AppGlassCard(
+              margin: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const AppHeroIcon(icon: Icons.school_rounded),
+                  const SizedBox(height: AppSpacing.md),
+                  const AppSectionHeader(
+                    overline: "Welcome",
+                    title: "UPSC Essay Practice",
+                    subtitle: "Sign in and continue your daily answer writing.",
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  AppPrimaryButton(
+                    label: "Sign in with Google",
+                    icon: Icons.login_rounded,
+                    onPressed: () async {
+                      User? user = await signInWithGoogle();
+
+                      if (user != null) {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(builder: (context) => HomeScreen()),
+                        );
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

@@ -1,0 +1,96 @@
+////////////////////////////////////////////////////////////
+///////////////// ESSAY HISTORY SCREEN /////////////////////
+////////////////////////////////////////////////////////////
+
+class EssayHistoryScreen extends StatelessWidget {
+  const EssayHistoryScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+
+    return Scaffold(
+      appBar: AppBar(title: Text("Essay History")),
+
+      body: StreamBuilder(
+        stream: FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .collection('essays')
+            .orderBy('timestamp', descending: true)
+            .snapshots(),
+
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return Center(child: CircularProgressIndicator());
+          }
+
+          final docs = snapshot.data!.docs;
+
+          if (docs.isEmpty) {
+            return Center(child: Text("No essays submitted yet"));
+          }
+
+          return ListView.builder(
+            padding: EdgeInsets.all(16),
+            itemCount: docs.length,
+
+            itemBuilder: (context, index) {
+              final data = docs[index];
+
+              return Container(
+                margin: EdgeInsets.only(bottom: 12),
+                padding: EdgeInsets.all(12),
+
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+
+                  boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 5)],
+                ),
+
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => UserEssayDetailScreen(data: data),
+                      ),
+                    );
+                  },
+
+                  leading: CircleAvatar(
+                    backgroundColor: Colors.blue,
+                    child: Text(
+                      "${data['score']}",
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+
+                  title: Text(
+                    data['topic'] ?? "Essay",
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+
+                  subtitle: Padding(
+                    padding: EdgeInsets.only(top: 6),
+
+                    child: Text(
+                      data['essay'] ?? "",
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}
