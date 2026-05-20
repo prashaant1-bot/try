@@ -1,6 +1,11 @@
-////////////////////////////////////////////////////////////
-/// 🤖 YOUR ORIGINAL ESSAY SCREEN (UNCHANGED LOGIC)
-////////////////////////////////////////////////////////////
+import 'dart:convert';
+import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 
 class EssayScreen extends StatefulWidget {
   final String date;
@@ -57,8 +62,14 @@ class _EssayScreenState extends State<EssayScreen> {
       List<Map<String, dynamic>> imageMessages = [];
 
       for (var file in imageFiles) {
-        final bytes = await file.readAsBytes();
-        final base64Image = base64Encode(bytes);
+        final compressed = await FlutterImageCompress.compressWithFile(
+          file.path,
+          quality: 40,
+          minWidth: 1000,
+          minHeight: 1500,
+        );
+
+        final base64Image = base64Encode(compressed!);
 
         imageMessages.add({
           "type": "image_url",
@@ -108,13 +119,15 @@ ${doc['feedback']}
       print("📡 STEP 1: Calling OpenAI API...");
 
       final response = await http.post(
-        Uri.parse("https://api.openai.com/v1/chat/completions"),
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer api key",
-        },
+        Uri.parse(
+          "https://us-central1-aspirant-ca9ea.cloudfunctions.net/evaluateEssay",
+        ),
+        headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "model": "gpt-4o",
+
+          "response_format": {"type": "json_object"},
+
           "messages": [
             {
               "role": "system",
@@ -355,7 +368,7 @@ If you fail to follow JSON format, the response is invalid.
         throw Exception("OpenAI returned empty content");
       }
 
-      print("📝 FULL RESPONSE:");
+      print("RAW GPT:");
       print(fullResponse);
 
       String essay = "";
@@ -363,40 +376,42 @@ If you fail to follow JSON format, the response is invalid.
       double score = 0;
 
       try {
-        // Remove markdown formatting
-        fullResponse = fullResponse
-            .replaceAll("```json", "")
-            .replaceAll("```", "")
-            .trim();
-
-        // Extract only JSON portion
-        final start = fullResponse.indexOf("{");
-        final end = fullResponse.lastIndexOf("}");
-
-        if (start != -1 && end != -1) {
-          fullResponse = fullResponse.substring(start, end + 1);
-        }
-
         final parsed = jsonDecode(fullResponse);
 
-        // Essay
         essay = parsed['essay']?.toString() ?? "";
 
-        // Feedback
         feedbackText = parsed['feedback']?.toString() ?? "";
 
-        // Robust score extraction
-        final rawScore = parsed['score']?.toString() ?? "0";
+        final scoreValue = parsed['score'];
 
-        final match = RegExp(r'(\d+(\.\d+)?)').firstMatch(rawScore);
+        print("RAW SCORE:");
+        print(scoreValue);
 
-        if (match != null) {
-          score = double.tryParse(match.group(0)!) ?? 0;
-        } else {
-          score = 0;
+        // Primary extraction from JSON score
+        score =
+            double.tryParse(
+              scoreValue.toString().replaceAll("/20", "").trim(),
+            ) ??
+            0;
+
+        // Backup extraction from feedback text
+        if (score == 0) {
+          final match = RegExp(
+            r'FINAL SCORE:\s*(\d+(\.\d+)?)',
+            caseSensitive: false,
+          ).firstMatch(feedbackText);
+
+          if (match != null) {
+            score = double.tryParse(match.group(1)!) ?? 0;
+
+            print("Score extracted from feedback backup");
+          }
         }
 
-        // Fallbacks
+        print("FINAL EXTRACTED SCORE:");
+        print(score);
+        print(score.runtimeType);
+
         if (essay.trim().isEmpty) {
           essay = "Essay extraction failed.";
         }
@@ -409,29 +424,11 @@ If you fail to follow JSON format, the response is invalid.
       } catch (e) {
         print("❌ JSON FAILED: $e");
 
-        // Fallback manual extraction
-        if (fullResponse.contains("STRUCTURE")) {
-          final parts = fullResponse.split("STRUCTURE");
+        essay = "Essay extraction failed.";
 
-          essay = parts[0].replaceFirst("ESSAY:", "").trim();
+        feedbackText = "Evaluation failed. Please retry.";
 
-          feedbackText = "STRUCTURE${parts[1]}";
-        } else {
-          feedbackText = fullResponse;
-        }
-
-        // Backup score extraction from raw response
-        final scoreMatch = RegExp(r'(\d+(\.\d+)?)').firstMatch(fullResponse);
-
-        if (scoreMatch != null) {
-          score = double.tryParse(scoreMatch.group(0)!) ?? 0;
-        } else {
-          score = 0;
-        }
-
-        if (feedbackText.trim().isEmpty) {
-          feedbackText = "Could not generate feedback.";
-        }
+        score = 0;
       }
 
       setState(() {

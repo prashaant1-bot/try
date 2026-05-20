@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'app_ui_kit.txt';
+import 'app_ui_kit.dart';
 
 class ChatScreen extends StatefulWidget {
   final String dateId;
@@ -332,7 +332,9 @@ class _ChatScreenState extends State<ChatScreen> {
                           ),
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: isMe ? AppChatPalette.bubbleMe : AppChatPalette.bubbleOther,
+                            color: isMe
+                                ? AppChatPalette.bubbleMe
+                                : AppChatPalette.bubbleOther,
                             borderRadius: BorderRadius.circular(AppRadii.md),
                           ),
                           child: Column(
@@ -342,7 +344,9 @@ class _ChatScreenState extends State<ChatScreen> {
                                 data['name'] ?? "User",
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  color: isMe ? AppChatPalette.bubbleMeText : AppChatPalette.bubbleOtherText,
+                                  color: isMe
+                                      ? AppChatPalette.bubbleMeText
+                                      : AppChatPalette.bubbleOtherText,
                                 ),
                               ),
                               const SizedBox(height: 5),

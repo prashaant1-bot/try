@@ -1,3 +1,9 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
+import 'package:my_first_app/chat_screen.dart';
+import 'package:my_first_app/screens/full_essay_screen.dart';
+import 'package:my_first_app/submission.dart';
+
 ////////////////////////////////////////////////////////////
 /// 📝 TOPIC OF THE DAY SCREEN//////////////////////////////////
 ////////////////////////////////////////////////////////////
