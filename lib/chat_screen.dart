@@ -352,7 +352,7 @@ class _ChatScreenState extends State<ChatScreen> {
                               const SizedBox(height: 5),
                               _buildReplyPreview(data, isMe),
                               _buildMessageBody(data, isMe),
-                              // _buildReactionsRow(data, docRef, isMe),
+                              _buildReactionsRow(data, docRef, isMe),
                             ],
                           ),
                         ),
@@ -437,3 +437,5 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 }
+
+
