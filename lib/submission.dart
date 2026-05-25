@@ -521,13 +521,27 @@ If you fail to follow JSON format, the response is invalid.
 
               _images.isNotEmpty
                   ? SizedBox(
-                      height: 200,
-                      child: ListView.builder(
+                      height: 210,
+                      child: ReorderableListView.builder(
                         scrollDirection: Axis.horizontal,
                         itemCount: _images.length,
+
+                        onReorder: (oldIndex, newIndex) {
+                          setState(() {
+                            if (newIndex > oldIndex) {
+                              newIndex -= 1;
+                            }
+
+                            final item = _images.removeAt(oldIndex);
+                            _images.insert(newIndex, item);
+                          });
+                        },
+
                         itemBuilder: (context, index) {
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 8),
+                          return Container(
+                            key: ValueKey(_images[index].path),
+                            margin: const EdgeInsets.only(right: 8),
+
                             child: Stack(
                               children: [
                                 ClipRRect(
@@ -582,6 +596,23 @@ If you fail to follow JSON format, the response is invalid.
                                         color: Colors.white,
                                         size: 16,
                                       ),
+                                    ),
+                                  ),
+                                ),
+
+                                Positioned(
+                                  bottom: 5,
+                                  right: 5,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black54,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Icon(
+                                      Icons.drag_handle,
+                                      color: Colors.white,
+                                      size: 18,
                                     ),
                                   ),
                                 ),
