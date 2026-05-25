@@ -1,25 +1,10 @@
-import 'package:http/http.dart' as http;
 import 'firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'chat_screen.dart';
 import 'app_ui_kit.dart';
-import 'package:image_picker/image_picker.dart';
-import 'dart:io';
-import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:google_sign_in/google_sign_in.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
-import 'screens/dashboard_screen.dart';
-import 'screens/essay_history_screen.dart';
-import 'screens/date_screen.dart';
-import 'screens/topic_of_the_day_screen.dart';
-import 'submission.dart';
-import 'screens/essayaftersubmitscreen.dart';
-import 'screens/full_essay_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
