@@ -120,11 +120,19 @@ class _ChatScreenState extends State<ChatScreen> {
   ) async {
     final uid = _currentUser?.uid;
     if (uid == null) return;
-    final currentReaction = (await docRef.get()).get('reactions.$uid');
+
+    final snapshot = await docRef.get();
+    final data = snapshot.data() as Map<String, dynamic>? ?? {};
+
+    final reactions = Map<String, dynamic>.from(data['reactions'] ?? {});
+
+    final currentReaction = reactions[uid];
+
     if (currentReaction == reaction) {
       await docRef.update({'reactions.$uid': FieldValue.delete()});
       return;
     }
+
     await docRef.update({'reactions.$uid': reaction});
   }
 

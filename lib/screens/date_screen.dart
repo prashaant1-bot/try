@@ -3,75 +3,84 @@ import 'package:flutter/material.dart';
 import 'package:my_first_app/screens/topic_of_the_day_screen.dart';
 
 ////////////////////////////////////////////////////////////
-/// 📅 DATE SCREEN//////////////////////////////////////////
+/// 📅 DATE SCREEN
 ////////////////////////////////////////////////////////////
 
 class DateScreen extends StatelessWidget {
   const DateScreen({super.key});
 
-  List<String> generateDates() {
-    List<String> dates = [];
-
-    DateTime today = DateTime.now();
-
-    for (int i = 0; i < 10; i++) {
-      DateTime date = today.subtract(Duration(days: i));
-
-      String formatted = "${date.day} ${_monthName(date.month)} ${date.year}";
-
-      dates.add(formatted);
-    }
-
-    return dates;
-  }
-
-  String _monthName(int month) {
-    const months = [
-      "January",
-      "February",
-      "March",
-      "April",
-      "May",
-      "June",
-      "July",
-      "August",
-      "September",
-      "October",
-      "November",
-      "December",
-    ];
-
-    return months[month - 1];
-  }
-
   @override
   Widget build(BuildContext context) {
-    final dates = generateDates();
-
     return Scaffold(
-      appBar: AppBar(title: Text("Select Date")),
+      appBar: AppBar(title: const Text("Select Date")),
 
-      body: ListView.builder(
-        padding: EdgeInsets.all(12),
-        itemCount: dates.length,
+      ////////////////////////////////////////////////////////////
+      /// 🔥 FETCH TOPICS IN LATEST-FIRST ORDER
+      ////////////////////////////////////////////////////////////
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('topics')
+            // 🔥 NEWEST DATE FIRST
+            .orderBy('timestamp', descending: true)
+            .snapshots(),
 
-        itemBuilder: (context, index) {
-          final currentDate = dates[index];
+        builder: (context, snapshot) {
+          ////////////////////////////////////////////////////////////
+          /// 🔄 LOADING
+          ////////////////////////////////////////////////////////////
 
-          return FutureBuilder<DocumentSnapshot>(
-            future: FirebaseFirestore.instance
-                .collection('topics')
-                .doc(currentDate)
-                .get(),
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-            builder: (context, snapshot) {
-              String topic = "Loading topic...";
+          ////////////////////////////////////////////////////////////
+          /// ❌ ERROR
+          ////////////////////////////////////////////////////////////
 
-              if (snapshot.hasData && snapshot.data!.data() != null) {
-                final data = snapshot.data!.data() as Map<String, dynamic>;
+          if (snapshot.hasError) {
+            return Center(child: Text("Error: ${snapshot.error}"));
+          }
 
-                topic = data['topic'] ?? "No topic available";
-              }
+          ////////////////////////////////////////////////////////////
+          /// 📭 EMPTY
+          ////////////////////////////////////////////////////////////
+
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return const Center(
+              child: Text(
+                "No topics available",
+                style: TextStyle(fontSize: 18),
+              ),
+            );
+          }
+
+          ////////////////////////////////////////////////////////////
+          /// 📚 FIRESTORE DOCS
+          ////////////////////////////////////////////////////////////
+
+          final docs = snapshot.data!.docs;
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(12),
+
+            itemCount: docs.length,
+
+            itemBuilder: (context, index) {
+              final doc = docs[index];
+
+              final data = doc.data() as Map<String, dynamic>;
+
+              //////////////////////////////////////////////////////
+              /// 📅 DATE FROM DOCUMENT ID
+              //////////////////////////////////////////////////////
+
+              final String currentDate = doc.id;
+
+              //////////////////////////////////////////////////////
+              /// 📝 TOPIC
+              //////////////////////////////////////////////////////
+
+              final String topic = data['topic'] ?? "No topic available";
 
               return Card(
                 shape: RoundedRectangleBorder(
@@ -80,7 +89,7 @@ class DateScreen extends StatelessWidget {
 
                 elevation: 4,
 
-                margin: EdgeInsets.only(bottom: 14),
+                margin: const EdgeInsets.only(bottom: 14),
 
                 child: InkWell(
                   borderRadius: BorderRadius.circular(18),
@@ -96,21 +105,24 @@ class DateScreen extends StatelessWidget {
                   },
 
                   child: Padding(
-                    padding: EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(16),
 
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+
                       children: [
-                        // 🔥 DATE ROW
+                        ////////////////////////////////////////////////////
+                        /// 📅 DATE ROW
+                        ////////////////////////////////////////////////////
                         Row(
                           children: [
-                            Icon(
+                            const Icon(
                               Icons.calendar_today,
                               color: Colors.blue,
                               size: 18,
                             ),
 
-                            SizedBox(width: 8),
+                            const SizedBox(width: 8),
 
                             Text(
                               currentDate,
@@ -122,9 +134,9 @@ class DateScreen extends StatelessWidget {
                               ),
                             ),
 
-                            Spacer(),
+                            const Spacer(),
 
-                            Icon(
+                            const Icon(
                               Icons.arrow_forward_ios,
                               size: 16,
                               color: Colors.grey,
@@ -132,16 +144,19 @@ class DateScreen extends StatelessWidget {
                           ],
                         ),
 
-                        SizedBox(height: 14),
+                        const SizedBox(height: 14),
 
-                        // 🔥 TOPIC
+                        ////////////////////////////////////////////////////
+                        /// 📝 TOPIC TEXT
+                        ////////////////////////////////////////////////////
                         Text(
                           topic,
 
                           maxLines: 2,
+
                           overflow: TextOverflow.ellipsis,
 
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                             height: 1.4,
