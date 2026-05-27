@@ -25,7 +25,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<Map<String, dynamic>> fetchUserStats() async {
     final uid = FirebaseAuth.instance.currentUser!.uid;
 
-    int total = 0;
+    double total = 0;
     int count = 0;
 
     final snapshot = await FirebaseFirestore.instance
@@ -35,7 +35,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         .get();
 
     for (var doc in snapshot.docs) {
-      total += int.tryParse(doc['score'].toString()) ?? 0;
+      final score = double.tryParse(doc['score'].toString()) ?? 0;
+
+      total += score;
       count++;
     }
 
